@@ -88,6 +88,40 @@ func GeminiGetter(ticker string) (float64, error) {
 	return (af + bf) / 2, nil
 }
 
+type BybitTicker struct {
+	Reusult struct {
+		List []struct {
+			Ask string `json:"ask1Price"`
+			Bid string `json:"bid1Price"`
+		} `json:"list"`
+	} `json:"result"`
+}
+
+func BybitGetter(ticker string) (float64, error) {
+	url := "https://api-testnet.bybit.com/v5/market/tickers?category=linear&symbol=" + ticker
+	body, err := getHTTPResponseBodyFromUrl(url)
+	if err != nil {
+		return 0, err
+	}
+	var tickerData BybitTicker
+	err = json.Unmarshal(body, &tickerData)
+	if err != nil {
+		return 0, err
+	}
+	a := tickerData.Reusult.List[0].Ask
+	b := tickerData.Reusult.List[0].Bid
+
+	af, err := strconv.ParseFloat(a, 64)
+	if err != nil {
+		return 0, err
+	}
+	bf, err := strconv.ParseFloat(b, 64)
+	if err != nil {
+		return 0, err
+	}
+	return (af + bf) / 2, nil
+}
+
 type BitstampTicker struct {
 	Ask string `json:"ask"`
 	Bid string `json:"bid"`

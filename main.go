@@ -25,7 +25,7 @@ type ExTickPri struct {
 
 func (etp ExTickPri) String() string {
 	et := etp.ExTick
-	return fmt.Sprintf("[%25s]\t%s", et, formatFloat(etp.Price))
+	return fmt.Sprintf("[%15s]\t%s", et, formatFloat(etp.Price))
 }
 
 func (et ExTick) String() string {
@@ -41,6 +41,7 @@ const (
 	Kucoin   Exchange = "kucoin"
 	Gateio   Exchange = "gateio"
 	Bitfinex Exchange = "bitfinex"
+	Bybit    Exchange = "bybit"
 )
 
 var exchangeGetters = map[Exchange]TickerGetter{
@@ -52,6 +53,7 @@ var exchangeGetters = map[Exchange]TickerGetter{
 	Kucoin:   KUCoinGetter,
 	Gateio:   GateIOGetter,
 	Bitfinex: BitfinexGetter,
+	Bybit:    BybitGetter,
 }
 
 func getExchangeTickerPrice(et ExTick) (*ExTickPri, error) {
@@ -87,6 +89,7 @@ var exchangeSymbols = map[Exchange][]string{
 	Kucoin:   symbols.Kucoin,
 	Gateio:   symbols.Gateio,
 	Bitfinex: symbols.Bitfinex,
+	Bybit:    symbols.Bybit,
 }
 
 func findExTick(symbol string) (*ExTick, error) {
@@ -116,7 +119,12 @@ func findExTick(symbol string) (*ExTick, error) {
 		return nil, fmt.Errorf("symbol not found: %s", symbol)
 	}
 	if len(foundSymbols) > 1 {
-		return nil, fmt.Errorf("symbol \"%s\" found in multiple exchanges: %v ", symbol, foundExchanges)
+		lst := []string{}
+		for i, v := range foundSymbols {
+			lst = append(lst, fmt.Sprintf("%s-%s", foundExchanges[i], v))
+		}
+		lines := strings.Join(lst, "\n")
+		return nil, fmt.Errorf("symbol %s found in multiple exchanges:\n%s", symbol, lines)
 	}
 	return &ExTick{foundExchanges[0], foundSymbols[0]}, nil
 }

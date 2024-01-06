@@ -1,6 +1,6 @@
 # pri
 
-CLI tool for simply getting cryptocurrency prices from 8 big exchanges. No API key needed.
+CLI tool for simply getting cryptocurrency prices from biggest exchanges. No API key needed.
 
 Supported exchanges are:
 - Binance
@@ -11,6 +11,7 @@ Supported exchanges are:
 - BitStamp
 - BitFinex
 - Huobi
+- Bybit
 
 ## Install
 
@@ -95,7 +96,7 @@ Getting prices...
 
 
 ## TODO
-- add bybit
+- add okx
 - automate asset list compilation
 - filter out delisted asset pairs, it's sometimes indicated in the api asset listsing
 - make arbitrage groups, like 

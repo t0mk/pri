@@ -2,7 +2,7 @@
 
 CLI tool for simply getting cryptocurrency prices from 8 big exchanges. No API key needed.
 
-Exchanges are:
+Supported exchanges are:
 - Binance
 - Coinbase
 - Kraken
@@ -11,6 +11,28 @@ Exchanges are:
 - BitStamp
 - BitFinex
 - Huobi
+
+## Install
+
+To install latest release for Linux:
+
+```sh
+wget -O pri https://github.com/t0mk/pri/releases/latest/download/pri-linux-amd64 && chmod +x pri && sudo cp pri /usr/local/bin/
+```
+
+.. for MacOS:
+
+```sh
+wget -O pri https://github.com/t0mk/pri/releases/latest/download/pri-darwin-amd64 && chmod +x pri && sudo cp pri /usr/local/bin/
+```
+
+## Build
+
+```sh
+git clone https://github.com/t0mk/pri
+cd pri
+go build
+```
 
 ## Usage
 

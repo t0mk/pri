@@ -1,0 +1,8 @@
+curl https://api.exchange.coinbase.com/products > cbp.json
+curl https://api.binance.com/api/v3/exchangeInfo | jq > b.json
+curl https://api.kraken.com/0/public/AssetPairs > k.json
+curl https://www.bitstamp.net/api/v2/ticker/ > bs.json
+curl https://data.gateapi.io/api2/1/pairs > gio
+curl "https://api.huobi.pro/market/tickers" > huo.json
+curl -L api.kucoin.com/api/v2/symbols
+curl      --url 'https://api-pub.bitfinex.com/v2/tickers?symbols=ALL'

@@ -94,19 +94,36 @@ Getting prices...
 [          binance-RPLUSDT]	29.94
 ```
 
+You can also check arbitrages - same ticker traded on different exchanges. `pri` will report highest and lowest price and spread.
+```
+./pri a! btc-usdt
+coinbase-BTC-USDT
+huobi-btcusdt
+kucoin-BTC-USDT
+binance-BTCUSDT
+gateio-BTC_USDT
+bitfinex-BTCUST
+bybit-BTCUSDT
+kraken-XBTUSDT
+okx-BTC-USDT
+Getting prices...
+[bitfinex-BTCUST]	41,893.00
+[coinbase-BTC-USDT]	41,883.71
+[  bybit-BTCUSDT]	41,894.25
+[ kraken-XBTUSDT]	41,889.45
+[   okx-BTC-USDT]	41,887.95
+[  huobi-btcusdt]	41,894.04
+[kucoin-BTC-USDT]	41,891.95
+[gateio-BTC_USDT]	41,892.05
+[binance-BTCUSDT]	41,892.10
+name: btc-usdt
+min: [coinbase-BTC-USDT]	41,883.71
+max: [  bybit-BTCUSDT]	41,894.25
+spread: 0.025%
+```
+
+
+
 
 ## TODO
 - automate asset list compilation
-- make arbitrage groups, like 
-```golang
-var btcUsdtTickers = []ExTick{
-	{"coinbase", "BTC-USD"},
-	{"binance", "BTCUSDT"},
-	{"kraken", "XBTUSDT"},
-	{"bitstamp", "btcusdt"},
-	{"huobi", "btcusdt"},
-	{"kucoin", "BTC-USDT"},
-	{"gateio", "BTC_USDT"},
-	{"bitfinex", "btcust"},
-}
-```

@@ -18,9 +18,110 @@ type ExTick struct {
 	Ticker   string
 }
 
+type ExTickSet struct {
+	Name    string
+	ExTicks []ExTick
+}
+
 type ExTickPri struct {
 	ExTick
 	Price float64
+}
+
+type ExTickPris []ExTickPri
+
+func (etps ExTickPris) Min() ExTickPri {
+	min := etps[0]
+	for _, v := range etps {
+		if v.Price < min.Price {
+			min = v
+		}
+	}
+	return min
+}
+
+func (etps ExTickPris) String() string {
+	str := ""
+	for _, v := range etps {
+		str += fmt.Sprintf("%s\n", v)
+	}
+	return str
+}
+
+func ExTickPrisToArbResult(n string, etps ExTickPris) ArbResult {
+	return ArbResult{
+		Name:          n,
+		TickPris:      etps,
+		Min:           etps.Min(),
+		Max:           etps.Max(),
+		SpreadPercent: SpreadType(etps.SpreadPercent()),
+	}
+}
+
+type SpreadType float64
+
+func (st SpreadType) String() string {
+	return fmt.Sprintf("%.3f%%", st)
+}
+
+type ArbResult struct {
+	Name          string
+	TickPris      ExTickPris
+	Min           ExTickPri
+	Max           ExTickPri
+	SpreadPercent SpreadType
+}
+
+func (ar ArbResult) String() string {
+	return fmt.Sprintf("name: %s\nmin: %s\nmax: %s\nspread: %s", ar.Name, ar.Min, ar.Max, ar.SpreadPercent)
+}
+
+type ArbResults []ArbResult
+
+func (ars ArbResults) HighestSpread() ArbResult {
+	max := ars[0]
+	for _, v := range ars {
+		if v.SpreadPercent > max.SpreadPercent {
+			max = v
+		}
+	}
+	return max
+}
+
+func (ars ArbResults) LowestSpread() ArbResult {
+	min := ars[0]
+	for _, v := range ars {
+		if v.SpreadPercent < min.SpreadPercent {
+			min = v
+		}
+	}
+	return min
+}
+
+func (ars ArbResults) Report() {
+	for _, v := range ars {
+		fmt.Println(v.Name, v.SpreadPercent)
+	}
+	fmt.Println("Highest spread:")
+	fmt.Println(ars.HighestSpread())
+	fmt.Println("Lowest spread:")
+	fmt.Println(ars.LowestSpread())
+}
+
+func (etps ExTickPris) Max() ExTickPri {
+	max := etps[0]
+	for _, v := range etps {
+		if v.Price > max.Price {
+			max = v
+		}
+	}
+	return max
+}
+
+func (etps ExTickPris) SpreadPercent() float64 {
+	min := etps.Min()
+	max := etps.Max()
+	return (max.Price - min.Price) / min.Price * 100
 }
 
 func (etp ExTickPri) String() string {
@@ -178,6 +279,33 @@ func main() {
 		panic("usage: pri [find] <symbol>")
 	}
 	if len(os.Args) == 2 {
+		if stringIsInSlice(os.Args[1], arbitrageCommands) {
+			fmt.Println("arbitrage groups:")
+			for k, v := range arbs {
+				fmt.Printf("%s: %s\n", k, v)
+			}
+			return
+		}
+		if os.Args[1] == "aa" {
+			exTickSets := []ExTickSet{}
+			for name, a := range arbs {
+				arbTicks, err := ExTicksFromSlice(a)
+				if err != nil {
+					panic(err)
+				}
+				if len(arbTicks) < 2 {
+					fmt.Printf("Arbitrage group %s has less than 2 tickers, skipping\n", a)
+					continue
+				}
+				exTickSets = append(exTickSets, ExTickSet{name, arbTicks})
+			}
+			arbResultChannel := getArbResultAsync(exTickSets)
+			ars := CollectArbResultsFromChannel(arbResultChannel, len(exTickSets))
+
+			ars.Report()
+			return
+		}
+
 		xt, err := findExTick(os.Args[1])
 		if err != nil {
 			panic(err)
@@ -211,7 +339,8 @@ func main() {
 			}
 			if strings.Contains(cmd, "!") {
 				fmt.Println("Getting prices...")
-				tickerChannel := make(chan *ExTickPri)
+				tickerChannel := getExTickPriAsync(found)
+
 				for _, v := range found {
 					go getExchangeTickerPriceAsync(v, tickerChannel)
 				}
@@ -220,7 +349,70 @@ func main() {
 					fmt.Println(etp)
 				}
 			}
+		} else if stringIsInSlice(cmd, arbitrageCommands) {
+			arbName := os.Args[2]
+			arb, ok := arbs[arbName]
+			if !ok {
+				fmt.Printf("Arbitrage group %s not found\n", arbName)
+				return
+			}
+			for _, v := range arb {
+				fmt.Println(v)
+			}
+			if strings.Contains(cmd, "!") {
+				fmt.Println("Getting prices...")
+				arbTicks, err := ExTicksFromSlice(arb)
+				if err != nil {
+					panic(err)
+				}
+				arbResult := ExTicksToArbResult(ExTickSet{arbName, arbTicks})
+				fmt.Println(arbResult)
 
+			}
 		}
 	}
+}
+
+func getArbResultAsync(exTickSets []ExTickSet) chan ArbResult {
+	arbResultChannel := make(chan ArbResult)
+	for _, v := range exTickSets {
+		go func(ets ExTickSet) {
+			arbResultChannel <- ExTicksToArbResult(ets)
+		}(v)
+	}
+	return arbResultChannel
+}
+
+func CollectArbResultsFromChannel(channel chan ArbResult, n int) ArbResults {
+	result := ArbResults{}
+	for i := 0; i < n; i++ {
+		ar := <-channel
+		result = append(result, ar)
+	}
+	return result
+}
+
+func ExTicksToArbResult(ets ExTickSet) ArbResult {
+	tickerChannel := getExTickPriAsync(ets.ExTicks)
+	result := CollectExTickPrisFromChannel(tickerChannel, len(ets.ExTicks))
+	arbResult := ExTickPrisToArbResult(ets.Name, result)
+	return arbResult
+}
+
+func getExTickPriAsync(tickers []ExTick) chan *ExTickPri {
+	tickerChannel := make(chan *ExTickPri)
+	for _, v := range tickers {
+		go getExchangeTickerPriceAsync(v, tickerChannel)
+	}
+	return tickerChannel
+}
+
+func CollectExTickPrisFromChannel(channel chan *ExTickPri, n int) ExTickPris {
+	result := ExTickPris{}
+	for i := 0; i < n; i++ {
+		etp := <-channel
+		fmt.Println(etp)
+		result = append(result, *etp)
+	}
+	return result
 }

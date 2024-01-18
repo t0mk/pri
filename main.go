@@ -42,6 +42,7 @@ const (
 	Gateio   Exchange = "gateio"
 	Bitfinex Exchange = "bitfinex"
 	Bybit    Exchange = "bybit"
+	Okx      Exchange = "okx"
 )
 
 var exchangeGetters = map[Exchange]TickerGetter{
@@ -54,6 +55,7 @@ var exchangeGetters = map[Exchange]TickerGetter{
 	Gateio:   GateIOGetter,
 	Bitfinex: BitfinexGetter,
 	Bybit:    BybitGetter,
+	Okx:      OkxGetter,
 }
 
 func getExchangeTickerPrice(et ExTick) (*ExTickPri, error) {
@@ -90,6 +92,7 @@ var exchangeSymbols = map[Exchange][]string{
 	Gateio:   symbols.Gateio,
 	Bitfinex: symbols.Bitfinex,
 	Bybit:    symbols.Bybit,
+	Okx:      symbols.Okx,
 }
 
 func findExTick(symbol string) (*ExTick, error) {
@@ -149,8 +152,10 @@ func searchForExchangeTicker(symbol string) []ExTick {
 	for k, v := range exchangeSymbols {
 		for _, t := range v {
 			lowerT := strings.ToLower(t)
+			lowerTNoDashNoSlash := strings.ReplaceAll(strings.ReplaceAll(lowerT, "-", ""), "/", "")
 			lowerSymbol := strings.ToLower(symbol)
-			if strings.Contains(lowerT, lowerSymbol) {
+			lowerSymbolNoDashNoSlash := strings.ReplaceAll(strings.ReplaceAll(lowerSymbol, "-", ""), "/", "")
+			if strings.Contains(lowerTNoDashNoSlash, lowerSymbolNoDashNoSlash) {
 				found = append(found, ExTick{k, t})
 			}
 		}

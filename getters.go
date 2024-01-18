@@ -133,6 +133,8 @@ func BitstampGetter(ticker string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
+	//fmt.Printf("Bitstamp %s %s\n", ticker, string(body))
+	//fmt.Println(url)
 	var tickerData BitstampTicker
 	err = json.Unmarshal(body, &tickerData)
 	if err != nil {
@@ -323,4 +325,35 @@ func BitflyerGetter(ticker string) (float64, error) {
 		return 0, err
 	}
 	return (tickerData.Ask + tickerData.Bid) / 2, nil
+}
+
+type OkxTicker struct {
+	Data []struct {
+		Ask string `json:"askPx"`
+		Bid string `json:"bidPx"`
+	} `json:"data"`
+}
+
+func OkxGetter(ticker string) (float64, error) {
+	url := "https://www.okx.com/api/v5/market/ticker?instId=" + ticker
+	body, err := getHTTPResponseBodyFromUrl(url)
+	if err != nil {
+		return 0, err
+	}
+	var tickerData OkxTicker
+	err = json.Unmarshal(body, &tickerData)
+	if err != nil {
+		return 0, err
+	}
+	a := tickerData.Data[0].Ask
+	b := tickerData.Data[0].Bid
+	af, err := strconv.ParseFloat(a, 64)
+	if err != nil {
+		return 0, err
+	}
+	bf, err := strconv.ParseFloat(b, 64)
+	if err != nil {
+		return 0, err
+	}
+	return (af + bf) / 2, nil
 }

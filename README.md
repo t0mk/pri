@@ -96,9 +96,7 @@ Getting prices...
 
 
 ## TODO
-- add okx
 - automate asset list compilation
-- filter out delisted asset pairs, it's sometimes indicated in the api asset listsing
 - make arbitrage groups, like 
 ```golang
 var btcUsdtTickers = []ExTick{

@@ -12,6 +12,7 @@ Supported exchanges are:
 - BitFinex
 - Huobi
 - Bybit
+- Okx
 
 ## Install
 

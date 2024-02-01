@@ -10,6 +10,48 @@ import (
 	"github.com/t0mk/pri/symbols"
 )
 
+const (
+	Coinmate Exchange = "coinmate"
+	Coinbase Exchange = "coinbase"
+	Binance  Exchange = "binance"
+	Kraken   Exchange = "kraken"
+	Bitstamp Exchange = "bitstamp"
+	Huobi    Exchange = "huobi"
+	Kucoin   Exchange = "kucoin"
+	Gateio   Exchange = "gateio"
+	Bitfinex Exchange = "bitfinex"
+	Bybit    Exchange = "bybit"
+	Okx      Exchange = "okx"
+)
+
+var exchangeGetters = map[Exchange]TickerGetter{
+	Coinmate: CoinmateGetter,
+	Coinbase: CoinbaseGetter,
+	Binance:  BinanceGetter,
+	Kraken:   KrakenGetter,
+	Bitstamp: BitstampGetter,
+	Huobi:    HuobiGetter,
+	Kucoin:   KUCoinGetter,
+	Gateio:   GateIOGetter,
+	Bitfinex: BitfinexGetter,
+	Bybit:    BybitGetter,
+	Okx:      OkxGetter,
+}
+
+var exchangeSymbols = map[Exchange][]string{
+	Coinmate: symbols.Coinmate,
+	Coinbase: symbols.Coinbase,
+	Binance:  symbols.Binance,
+	Kraken:   symbols.Kraken,
+	Bitstamp: symbols.Bitstamp,
+	Huobi:    symbols.Huobi,
+	Kucoin:   symbols.Kucoin,
+	Gateio:   symbols.Gateio,
+	Bitfinex: symbols.Bitfinex,
+	Bybit:    symbols.Bybit,
+	Okx:      symbols.Okx,
+}
+
 var debug = false
 
 type Exchange string
@@ -23,21 +65,36 @@ type ExTickSet struct {
 	ExTicks []ExTick
 }
 
+type TickPrice struct {
+	MinAsk float64
+	MaxBid float64
+}
+
 type ExTickPri struct {
 	ExTick
-	Price float64
+	Price TickPrice
 }
 
 type ExTickPris []ExTickPri
 
-func (etps ExTickPris) Min() ExTickPri {
+func (etps ExTickPris) MinAsk() ExTickPri {
 	min := etps[0]
 	for _, v := range etps {
-		if v.Price < min.Price {
+		if v.Price.MinAsk < min.Price.MinAsk {
 			min = v
 		}
 	}
 	return min
+}
+
+func (etps ExTickPris) MaxBid() ExTickPri {
+	max := etps[0]
+	for _, v := range etps {
+		if v.Price.MaxBid > max.Price.MaxBid {
+			max = v
+		}
+	}
+	return max
 }
 
 func (etps ExTickPris) String() string {
@@ -52,8 +109,8 @@ func ExTickPrisToArbResult(n string, etps ExTickPris) ArbResult {
 	return ArbResult{
 		Name:          n,
 		TickPris:      etps,
-		Min:           etps.Min(),
-		Max:           etps.Max(),
+		MinAsk:        etps.MinAsk(),
+		MaxBid:        etps.MaxBid(),
 		SpreadPercent: SpreadType(etps.SpreadPercent()),
 	}
 }
@@ -67,13 +124,13 @@ func (st SpreadType) String() string {
 type ArbResult struct {
 	Name          string
 	TickPris      ExTickPris
-	Min           ExTickPri
-	Max           ExTickPri
+	MinAsk        ExTickPri
+	MaxBid        ExTickPri
 	SpreadPercent SpreadType
 }
 
 func (ar ArbResult) String() string {
-	return fmt.Sprintf("name: %s\nmin: %s\nmax: %s\nspread: %s", ar.Name, ar.Min, ar.Max, ar.SpreadPercent)
+	return fmt.Sprintf("name: %s\nmin: %s\nmax: %s\nspread: %s", ar.Name, ar.MinAsk, ar.MaxBid, ar.SpreadPercent)
 }
 
 type ArbResults []ArbResult
@@ -108,69 +165,33 @@ func (ars ArbResults) Report() {
 	fmt.Println(ars.LowestSpread())
 }
 
-func (etps ExTickPris) Max() ExTickPri {
-	max := etps[0]
-	for _, v := range etps {
-		if v.Price > max.Price {
-			max = v
-		}
-	}
-	return max
-}
-
 func (etps ExTickPris) SpreadPercent() float64 {
-	min := etps.Min()
-	max := etps.Max()
-	return (max.Price - min.Price) / min.Price * 100
+	min := etps.MinAsk().Price.MinAsk
+	max := etps.MaxBid().Price.MaxBid
+	return (max - min) / min * 100
 }
 
 func (etp ExTickPri) String() string {
 	et := etp.ExTick
-	return fmt.Sprintf("[%15s]\t%s", et, formatFloat(etp.Price))
+	return fmt.Sprintf("[%15s]\t[%15s - %15s]", et, formatFloat(etp.Price.MinAsk), formatFloat(etp.Price.MaxBid))
 }
 
 func (et ExTick) String() string {
 	return fmt.Sprintf("%s-%s", et.Exchange, et.Ticker)
 }
 
-const (
-	Coinbase Exchange = "coinbase"
-	Binance  Exchange = "binance"
-	Kraken   Exchange = "kraken"
-	Bitstamp Exchange = "bitstamp"
-	Huobi    Exchange = "huobi"
-	Kucoin   Exchange = "kucoin"
-	Gateio   Exchange = "gateio"
-	Bitfinex Exchange = "bitfinex"
-	Bybit    Exchange = "bybit"
-	Okx      Exchange = "okx"
-)
-
-var exchangeGetters = map[Exchange]TickerGetter{
-	Coinbase: CoinbaseGetter,
-	Binance:  BinanceGetter,
-	Kraken:   KrakenGetter,
-	Bitstamp: BitstampGetter,
-	Huobi:    HuobiGetter,
-	Kucoin:   KUCoinGetter,
-	Gateio:   GateIOGetter,
-	Bitfinex: BitfinexGetter,
-	Bybit:    BybitGetter,
-	Okx:      OkxGetter,
-}
-
 func getExchangeTickerPrice(et ExTick) (*ExTickPri, error) {
 	start := time.Now()
 	getter := exchangeGetters[et.Exchange]
-	price, err := getter(et.Ticker)
+	ab, err := getter(et.Ticker)
 	if err != nil {
 		return nil, err
 	}
 	elapsed := time.Since(start)
 	if debug {
-		log.Printf("[%15s]\t[%5s]\t%.2f\n", et, elapsed, price)
+		log.Printf("[%15s]\t[%5s]\t%s\n", et, elapsed, ab)
 	}
-	return &ExTickPri{et, price}, nil
+	return &ExTickPri{et, TickPrice{ab.Ask, ab.Bid}}, nil
 }
 
 func getExchangeTickerPriceAsync(et ExTick, channel chan *ExTickPri) {
@@ -183,18 +204,6 @@ func getExchangeTickerPriceAsync(et ExTick, channel chan *ExTickPri) {
 	channel <- etp
 }
 
-var exchangeSymbols = map[Exchange][]string{
-	Coinbase: symbols.Coinbase,
-	Binance:  symbols.Binance,
-	Kraken:   symbols.Kraken,
-	Bitstamp: symbols.Bitstamp,
-	Huobi:    symbols.Huobi,
-	Kucoin:   symbols.Kucoin,
-	Gateio:   symbols.Gateio,
-	Bitfinex: symbols.Bitfinex,
-	Bybit:    symbols.Bybit,
-	Okx:      symbols.Okx,
-}
 
 func findExTick(symbol string) (*ExTick, error) {
 	if hasExchangePrefix(symbol) {
@@ -249,13 +258,14 @@ func stringIsInSlice(s string, sl []string) bool {
 }
 
 func searchForExchangeTicker(symbol string) []ExTick {
+	replacer := strings.NewReplacer("-", "", "/", "", "_", "")
 	found := []ExTick{}
 	for k, v := range exchangeSymbols {
 		for _, t := range v {
 			lowerT := strings.ToLower(t)
-			lowerTNoDashNoSlash := strings.ReplaceAll(strings.ReplaceAll(lowerT, "-", ""), "/", "")
+			lowerTNoDashNoSlash := replacer.Replace(lowerT)
 			lowerSymbol := strings.ToLower(symbol)
-			lowerSymbolNoDashNoSlash := strings.ReplaceAll(strings.ReplaceAll(lowerSymbol, "-", ""), "/", "")
+			lowerSymbolNoDashNoSlash := replacer.Replace(lowerSymbol)
 			if strings.Contains(lowerTNoDashNoSlash, lowerSymbolNoDashNoSlash) {
 				found = append(found, ExTick{k, t})
 			}

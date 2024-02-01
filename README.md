@@ -19,13 +19,13 @@ Supported exchanges are:
 To install latest release for Linux:
 
 ```sh
-wget -O pri https://github.com/t0mk/pri/releases/latest/download/pri-linux-amd64 && chmod +x pri && sudo cp pri /usr/local/bin/
+wget -O /tmp/pri https://github.com/t0mk/pri/releases/latest/download/pri-linux-amd64 && chmod +x /tmp/pri && sudo cp /tmp/pri /usr/local/bin/
 ```
 
 .. for MacOS:
 
 ```sh
-wget -O pri https://github.com/t0mk/pri/releases/latest/download/pri-darwin-amd64 && chmod +x pri && sudo cp pri /usr/local/bin/
+wget -O /tmp/pri https://github.com/t0mk/pri/releases/latest/download/pri-darwin-amd64 && chmod +x /tmp/pri && sudo cp /tmp/pri /usr/local/bin/
 ```
 
 ## Build

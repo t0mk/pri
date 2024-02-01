@@ -11,44 +11,44 @@ import (
 )
 
 const (
-	Coinmate Exchange = "coinmate"
-	Coinbase Exchange = "coinbase"
 	Binance  Exchange = "binance"
-	Kraken   Exchange = "kraken"
-	Bitstamp Exchange = "bitstamp"
-	Huobi    Exchange = "huobi"
-	Kucoin   Exchange = "kucoin"
-	Gateio   Exchange = "gateio"
 	Bitfinex Exchange = "bitfinex"
+	Bitstamp Exchange = "bitstamp"
 	Bybit    Exchange = "bybit"
+	Coinbase Exchange = "coinbase"
+	Coinmate Exchange = "coinmate"
+	Gateio   Exchange = "gateio"
+	Huobi    Exchange = "huobi"
+	Kraken   Exchange = "kraken"
+	Kucoin   Exchange = "kucoin"
 	Okx      Exchange = "okx"
 )
 
 var exchangeGetters = map[Exchange]TickerGetter{
-	Coinmate: CoinmateGetter,
-	Coinbase: CoinbaseGetter,
 	Binance:  BinanceGetter,
-	Kraken:   KrakenGetter,
-	Bitstamp: BitstampGetter,
-	Huobi:    HuobiGetter,
-	Kucoin:   KUCoinGetter,
-	Gateio:   GateIOGetter,
 	Bitfinex: BitfinexGetter,
+	Bitstamp: BitstampGetter,
 	Bybit:    BybitGetter,
+	Coinbase: CoinbaseGetter,
+	Coinmate: CoinmateGetter,
+	Gateio:   GateIOGetter,
+	Huobi:    HuobiGetter,
+	Kraken:   KrakenGetter,
+	Kucoin:   KUCoinGetter,
 	Okx:      OkxGetter,
 }
 
 var exchangeSymbols = map[Exchange][]string{
-	Coinmate: symbols.Coinmate,
-	Coinbase: symbols.Coinbase,
 	Binance:  symbols.Binance,
-	Kraken:   symbols.Kraken,
-	Bitstamp: symbols.Bitstamp,
-	Huobi:    symbols.Huobi,
-	Kucoin:   symbols.Kucoin,
-	Gateio:   symbols.Gateio,
 	Bitfinex: symbols.Bitfinex,
+	Bitstamp: symbols.Bitstamp,
 	Bybit:    symbols.Bybit,
+	Coinbase: symbols.Coinbase,
+	Coinmate: symbols.Coinmate,
+	Gateio:   symbols.Gateio,
+	Huobi:    symbols.Huobi,
+	Kraken:   symbols.Kraken,
+	Kucoin:   symbols.Kucoin,
 	Okx:      symbols.Okx,
 }
 
@@ -203,7 +203,6 @@ func getExchangeTickerPriceAsync(et ExTick, channel chan *ExTickPri) {
 	}
 	channel <- etp
 }
-
 
 func findExTick(symbol string) (*ExTick, error) {
 	if hasExchangePrefix(symbol) {

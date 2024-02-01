@@ -233,22 +233,34 @@ func HuobiGetter(ticker string) (*AskBid, error) {
 	return &AskBid{a, b}, nil
 }
 
+type BinanceTicker struct {
+	Ask string `json:"askPrice"`
+	Bid string `json:"bidPrice"`
+}
+
 func BinanceGetter(ticker string) (*AskBid, error) {
-	url := "https://api1.binance.com/api/v3/ticker/price?symbol=" + ticker
+	url := "https://api.binance.com/api/v3/ticker/bookTicker?symbol=" + ticker
 	body, err := getHTTPResponseBodyFromUrl(url)
 	if err != nil {
 		return nil, err
 	}
-	var tickerData CoinbaseTicker
+	fmt.Println(string(body))
+	var tickerData BinanceTicker
 	err = json.Unmarshal(body, &tickerData)
 	if err != nil {
 		return nil, err
 	}
-	price, err := strconv.ParseFloat(tickerData.Price, 64)
+	a := tickerData.Ask
+	b := tickerData.Bid
+	af, err := strconv.ParseFloat(a, 64)
 	if err != nil {
 		return nil, err
 	}
-	return &AskBid{price, price}, nil
+	bf, err := strconv.ParseFloat(b, 64)
+	if err != nil {
+		return nil, err
+	}
+	return &AskBid{af, bf}, nil
 }
 
 type GateIOTicker struct {
@@ -280,12 +292,10 @@ func GateIOGetter(ticker string) (*AskBid, error) {
 	return &AskBid{af, bf}, nil
 }
 
-type BitfinexTicker struct {
-	Mid string `json:"mid"`
-}
+type BitfinexTicker []float64
 
 func BitfinexGetter(ticker string) (*AskBid, error) {
-	url := "https://api.bitfinex.com/v1/pubticker/" + ticker
+	url := "https://api-pub.bitfinex.com/v2/ticker/t" + ticker
 	body, err := getHTTPResponseBodyFromUrl(url)
 	if err != nil {
 		return nil, err
@@ -295,11 +305,9 @@ func BitfinexGetter(ticker string) (*AskBid, error) {
 	if err != nil {
 		return nil, err
 	}
-	price, err := strconv.ParseFloat(tickerData.Mid, 64)
-	if err != nil {
-		return nil, err
-	}
-	return &AskBid{price, price}, nil
+	a := tickerData[2]
+	b := tickerData[0]
+	return &AskBid{a, b}, nil
 }
 
 type KUCoinTicker struct {

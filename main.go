@@ -342,21 +342,31 @@ func main() {
 				fmt.Printf("Symbol \"%s\" not found\n", symbol)
 				return
 			}
+
 			fmt.Println("Found symbols:")
 			for _, v := range found {
 				fmt.Println(v)
 			}
-			if strings.Contains(cmd, "!") {
-				fmt.Println("Getting prices...")
-				tickerChannel := getExTickPriAsync(found)
 
-				for _, v := range found {
-					go getExchangeTickerPriceAsync(v, tickerChannel)
-				}
-				for i := 0; i < len(found); i++ {
-					etp := <-tickerChannel
-					fmt.Println(etp)
-				}
+			if strings.Contains(cmd, "!") {
+				tickerChannel := getExTickPriChan(found)
+				CollectExTickPrisFromChannel(tickerChannel, len(found))
+				/*
+						fmt.Println("Getting prices...")
+						tickerChannel := getExTickPriChan(found)
+
+						for _, v := range found {
+							fmt.Println("getting price for", v)
+							go getExchangeTickerPriceAsync(v, tickerChannel)
+						}
+						for i := 0; i < len(found); i++ {
+							etp := <-tickerChannel
+							fmt.Println(etp)
+						}
+					for _, v := range result {
+						fmt.Println(v)
+					}
+				*/
 			}
 		} else if stringIsInSlice(cmd, arbitrageCommands) {
 			arbName := os.Args[2]
@@ -402,13 +412,13 @@ func CollectArbResultsFromChannel(channel chan ArbResult, n int) ArbResults {
 }
 
 func ExTicksToArbResult(ets ExTickSet) ArbResult {
-	tickerChannel := getExTickPriAsync(ets.ExTicks)
+	tickerChannel := getExTickPriChan(ets.ExTicks)
 	result := CollectExTickPrisFromChannel(tickerChannel, len(ets.ExTicks))
 	arbResult := ExTickPrisToArbResult(ets.Name, result)
 	return arbResult
 }
 
-func getExTickPriAsync(tickers []ExTick) chan *ExTickPri {
+func getExTickPriChan(tickers []ExTick) chan *ExTickPri {
 	tickerChannel := make(chan *ExTickPri)
 	for _, v := range tickers {
 		go getExchangeTickerPriceAsync(v, tickerChannel)

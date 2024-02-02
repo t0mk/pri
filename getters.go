@@ -228,6 +228,7 @@ func HuobiGetter(ticker string) (*AskBid, error) {
 	if err != nil {
 		return nil, err
 	}
+	//fmt.Printf("Huobi %s %#v\n", ticker, tickerData)
 	a := tickerData.Tick.Ask[0]
 	b := tickerData.Tick.Bid[0]
 	return &AskBid{a, b}, nil
@@ -244,7 +245,7 @@ func BinanceGetter(ticker string) (*AskBid, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(body))
+	//fmt.Println(string(body))
 	var tickerData BinanceTicker
 	err = json.Unmarshal(body, &tickerData)
 	if err != nil {

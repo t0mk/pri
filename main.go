@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -13,7 +14,7 @@ import (
 const (
 	Binance  Exchange = "binance"
 	Bitfinex Exchange = "bitfinex"
-	Bitstamp Exchange = "bitstamp"
+	//	Bitstamp Exchange = "bitstamp"
 	Bybit    Exchange = "bybit"
 	Coinbase Exchange = "coinbase"
 	Coinmate Exchange = "coinmate"
@@ -27,7 +28,7 @@ const (
 var exchangeGetters = map[Exchange]TickerGetter{
 	Binance:  BinanceGetter,
 	Bitfinex: BitfinexGetter,
-	Bitstamp: BitstampGetter,
+	//	Bitstamp: BitstampGetter,
 	Bybit:    BybitGetter,
 	Coinbase: CoinbaseGetter,
 	Coinmate: CoinmateGetter,
@@ -41,7 +42,7 @@ var exchangeGetters = map[Exchange]TickerGetter{
 var exchangeSymbols = map[Exchange][]string{
 	Binance:  symbols.Binance,
 	Bitfinex: symbols.Bitfinex,
-	Bitstamp: symbols.Bitstamp,
+	//	Bitstamp: symbols.Bitstamp,
 	Bybit:    symbols.Bybit,
 	Coinbase: symbols.Coinbase,
 	Coinmate: symbols.Coinmate,
@@ -173,7 +174,7 @@ func (etps ExTickPris) SpreadPercent() float64 {
 
 func (etp ExTickPri) String() string {
 	et := etp.ExTick
-	return fmt.Sprintf("[%15s]\t[%15s - %15s]", et, formatFloat(etp.Price.MinAsk), formatFloat(etp.Price.MaxBid))
+	return fmt.Sprintf("[%15s]\t[%15s - %15s]", et, formatFloat(etp.Price.MaxBid), formatFloat(etp.Price.MinAsk))
 }
 
 func (et ExTick) String() string {
@@ -185,7 +186,7 @@ func getExchangeTickerPrice(et ExTick) (*ExTickPri, error) {
 	getter := exchangeGetters[et.Exchange]
 	ab, err := getter(et.Ticker)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("[%s]: error getting price: %v", et, err))
 	}
 	elapsed := time.Since(start)
 	if debug {
@@ -351,22 +352,6 @@ func main() {
 			if strings.Contains(cmd, "!") {
 				tickerChannel := getExTickPriChan(found)
 				CollectExTickPrisFromChannel(tickerChannel, len(found))
-				/*
-						fmt.Println("Getting prices...")
-						tickerChannel := getExTickPriChan(found)
-
-						for _, v := range found {
-							fmt.Println("getting price for", v)
-							go getExchangeTickerPriceAsync(v, tickerChannel)
-						}
-						for i := 0; i < len(found); i++ {
-							etp := <-tickerChannel
-							fmt.Println(etp)
-						}
-					for _, v := range result {
-						fmt.Println(v)
-					}
-				*/
 			}
 		} else if stringIsInSlice(cmd, arbitrageCommands) {
 			arbName := os.Args[2]
@@ -430,8 +415,10 @@ func CollectExTickPrisFromChannel(channel chan *ExTickPri, n int) ExTickPris {
 	result := ExTickPris{}
 	for i := 0; i < n; i++ {
 		etp := <-channel
-		fmt.Println(etp)
-		result = append(result, *etp)
+		if etp != nil {
+			fmt.Println(etp)
+			result = append(result, *etp)
+		}
 	}
 	return result
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,10 +74,54 @@ type TickPrice struct {
 
 type ExTickPri struct {
 	ExTick
-	Price TickPrice
+	Price   TickPrice
+	Compare *ComparePrice
+}
+
+func formatRatioPercent(f1, f2 float64) string {
+	return fmt.Sprintf("%.1f%%", f1/f2*100)
+}
+
+func (etp ExTickPri) String() string {
+	et := etp.ExTick
+	r := fmt.Sprintf("[%15s]\t[%15s - %15s]", et, formatFloat(etp.Price.MinAsk), formatFloat(etp.Price.MaxBid))
+	if etp.Compare != nil {
+		// print how much is the bid or ask in comparison
+		if etp.Compare.Type == Bid {
+			r += fmt.Sprintf("\tcmp bid: %s", formatRatioPercent(etp.Price.MaxBid, etp.Compare.Price))
+		} else {
+			r += fmt.Sprintf("\tcmp ask: %s", formatRatioPercent(etp.Price.MinAsk, etp.Compare.Price))
+		}
+	}
+	return r
 }
 
 type ExTickPris []ExTickPri
+
+type BidAsk string
+
+const (
+	Bid BidAsk = "b"
+	Ask BidAsk = "a"
+)
+
+type ComparePrice struct {
+	Type  BidAsk
+	Price float64
+}
+
+func ComparePriceFromString(s string) *ComparePrice {
+	if s == "" {
+		return nil
+	}
+	t := s[:1]
+	if t != "a" && t != "b" {
+		panic(fmt.Sprintf("invalid compare price type: %s", t))
+	}
+	f := parseFloat(s[1:])
+	ba := BidAsk(t)
+	return &ComparePrice{ba, f}
+}
 
 func (etps ExTickPris) MinAsk() ExTickPri {
 	min := etps[0]
@@ -172,15 +217,6 @@ func (etps ExTickPris) SpreadPercent() float64 {
 	return (max - min) / min * 100
 }
 
-func (etp ExTickPri) String() string {
-	et := etp.ExTick
-	return fmt.Sprintf("[%15s]\t[%15s - %15s]", et, formatFloat(etp.Price.MaxBid), formatFloat(etp.Price.MinAsk))
-}
-
-func (et ExTick) String() string {
-	return fmt.Sprintf("%s-%s", et.Exchange, et.Ticker)
-}
-
 func getExchangeTickerPrice(et ExTick) (*ExTickPri, error) {
 	start := time.Now()
 	getter := exchangeGetters[et.Exchange]
@@ -192,7 +228,7 @@ func getExchangeTickerPrice(et ExTick) (*ExTickPri, error) {
 	if debug {
 		log.Printf("[%15s]\t[%5s]\t%s\n", et, elapsed, ab)
 	}
-	return &ExTickPri{et, TickPrice{ab.Ask, ab.Bid}}, nil
+	return &ExTickPri{et, TickPrice{ab.Ask, ab.Bid}, nil}, nil
 }
 
 func getExchangeTickerPriceAsync(et ExTick, channel chan *ExTickPri) {
@@ -285,18 +321,20 @@ func hasExchangePrefix(symbol string) bool {
 
 func main() {
 	preSetup()
-	if len(os.Args) == 1 {
+	la := len(os.Args)
+	if la == 1 {
 		panic("usage: pri [find] <symbol>")
 	}
-	if len(os.Args) == 2 {
-		if stringIsInSlice(os.Args[1], arbitrageCommands) {
+	cmd := os.Args[1]
+	if stringIsInSlice(cmd, arbitrageCommands) {
+		if la == 2 {
 			fmt.Println("arbitrage groups:")
 			for k, v := range arbs {
 				fmt.Printf("%s: %s\n", k, v)
 			}
 			return
 		}
-		if os.Args[1] == "aa" {
+		if cmd == "aa" {
 			exTickSets := []ExTickSet{}
 			for name, a := range arbs {
 				arbTicks, err := ExTicksFromSlice(a)
@@ -315,15 +353,19 @@ func main() {
 			ars.Report()
 			return
 		}
-
-		xt, err := findExTick(os.Args[1])
-		if err != nil {
-			panic(err)
+	}
+	if stringIsInSlice(cmd, findCommands) {
+		if la < 3 {
+			fmt.Println("usage: pri find <symbol>")
+			return
 		}
-		etp, err := getExchangeTickerPrice(*xt)
-		if err != nil {
-			panic(err)
+		symbol := os.Args[2]
+		if hasExchangePrefix(symbol) {
+			sli := strings.SplitN(symbol, "-", 2)
+			fmt.Printf("Symbol should not have exchange prefix, use only %s instead of %s\n", sli[1], symbol)
+			return
 		}
+<<<<<<< Updated upstream
 		fmt.Println(etp)
 	}
 	if len(os.Args) == 3 {
@@ -359,22 +401,78 @@ func main() {
 			if !ok {
 				fmt.Printf("Arbitrage group %s not found\n", arbName)
 				return
-			}
-			for _, v := range arb {
-				fmt.Println(v)
-			}
-			if strings.Contains(cmd, "!") {
-				fmt.Println("Getting prices...")
-				arbTicks, err := ExTicksFromSlice(arb)
-				if err != nil {
-					panic(err)
-				}
-				arbResult := ExTicksToArbResult(ExTickSet{arbName, arbTicks})
-				fmt.Println(arbResult)
+=======
+		if len(symbol) < 3 {
+			fmt.Println("Symbol should be at least 3 characters long")
+		}
+		found := searchForExchangeTicker(symbol)
+		if len(found) == 0 {
+			fmt.Printf("Symbol \"%s\" not found\n", symbol)
+			return
+		}
+		fmt.Println("Found symbols:")
+		for _, v := range found {
+			fmt.Println(v)
+		}
+		if strings.Contains(cmd, "!") {
+			fmt.Println("Getting prices...")
+			tickerChannel := getExTickPriAsync(found)
 
+			for _, v := range found {
+				go getExchangeTickerPriceAsync(v, tickerChannel)
+>>>>>>> Stashed changes
+			}
+			for i := 0; i < len(found); i++ {
+				etp := <-tickerChannel
+				fmt.Println(etp)
 			}
 		}
+		return
 	}
+	if stringIsInSlice(cmd, arbitrageCommands) {
+		arbName := os.Args[2]
+		arb, ok := arbs[arbName]
+		if !ok {
+			fmt.Printf("Arbitrage group %s not found\n", arbName)
+			return
+		}
+		for _, v := range arb {
+			fmt.Println(v)
+		}
+		if strings.Contains(cmd, "!") {
+			fmt.Println("Getting prices...")
+			arbTicks, err := ExTicksFromSlice(arb)
+			if err != nil {
+				panic(err)
+			}
+			arbResult := ExTicksToArbResult(ExTickSet{arbName, arbTicks})
+			fmt.Println(arbResult)
+		}
+		return
+	}
+
+	xt, err := findExTick(cmd)
+	if err != nil {
+		panic(err)
+	}
+
+	etp, err := getExchangeTickerPrice(*xt)
+	if err != nil {
+		panic(err)
+	}
+	if len(os.Args) > 2 {
+		c := ComparePriceFromString(os.Args[2])
+		etp.Compare = c
+	}
+	fmt.Println(etp)
+}
+
+func parseFloat(s string) float64 {
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return f
 }
 
 func getArbResultAsync(exTickSets []ExTickSet) chan ArbResult {
